@@ -8,8 +8,9 @@ require 'pry'
 LEANKIT_USERNAME = ENV['LEANKIT_USERNAME']
 LEANKIT_BOARDS = ENV['LEANKIT_BOARDS'].split(/,\s*/)
 LEANKIT_USERID = ENV['LEANKIT_USERID']
-LEANKIT_DONELANES = ENV['LEANKIT_DONELANES'].split(/,\s*/)
 LEANKIT_ACCOUNT = ENV['LEANKIT_ACCOUNT']
+
+leankit_donelanes = ENV['LEANKIT_DONELANES'].split(/,\s*/)
 
 LeanKitKanban::Config.email = ENV['LEANKIT_USERNAME']
 LeanKitKanban::Config.password = ENV['LEANKIT_PASSWORD']
@@ -30,8 +31,8 @@ LEANKIT_BOARDS.each do |board|
   b = LeanKitKanban::Board.find(board)
   # Iterate to get all done lanes
   b[0]["Lanes"].each do |lane|
-    if LEANKIT_DONELANES.include?(lane["Id"])
-      LEANKIT_DONELANES += lane["ChildLaneIds"]
+    if leankit_donelanes.include?(lane["Id"].to_s)
+      leankit_donelanes += lane["ChildLaneIds"].map(&:to_s)
     end
   end
 
@@ -45,14 +46,14 @@ LEANKIT_BOARDS.each do |board|
       task = project.tasks[its.name.contains(cardid)].first.get rescue nil
       if task
         next if task.completed.get # No back updates
-        if LEANKIT_DONELANES.include?(lane["Id"])
+        if leankit_donelanes.include?(lane["Id"].to_s)
           puts "Completing in OmniFocus: #{card["Title"]} - #{cardid}"
           task.completed.set true
         else
           update_if_changed task, :note, cardurl
           update_if_changed task, :name, "#{card["Title"]} - #{cardid}"
         end
-      elsif !LEANKIT_DONELANES.include?(lane["Id"])
+      elsif !leankit_donelanes.include?(lane["Id"].to_s)
         puts "Adding: #{card["Title"]} - #{cardid}"
         task = project.make :new => :task, :with_properties => {
           :name => "#{card["Title"]} - #{cardid}",
