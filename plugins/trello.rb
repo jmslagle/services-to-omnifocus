@@ -17,16 +17,27 @@
 #
 
 require "trello"
+require "pry"
 
 Trello.configure do |config|
   config.developer_public_key = ENV['TRELLO_DEVELOPER_PUBLIC_KEY']
   config.member_token = ENV['TRELLO_MEMBER_TOKEN']
 end
 
+TRELLO_DEFAULT_CONTEXT = ENV['TRELLO_DEFAULT_CONTEXT']
+
 Trello::Member.find('my').cards.each do |card|
   next if card.board.closed?
   project_name = card.board.name
-  project = $omnifocus.flattened_projects[project_name].get
+  project = $omnifocus.flattened_projects[project_name].get rescue nil
+  if project == nil
+    puts 'Creating new Omnifocus project ' + project_name
+
+    project = $omnifocus.make :new => :project, :with_properties => {
+      :name =>    project_name,
+      :context => $omnifocus.flattened_contexts[TRELLO_DEFAULT_CONTEXT],
+    }
+  end
   task_id = "[#%d]" % card.short_id
   task = project.tasks[its.name.contains(task_id)].first.get rescue nil
 
